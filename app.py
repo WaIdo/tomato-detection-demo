@@ -1,4 +1,4 @@
-"""Upload-only, CPU-hosted tomato detection demonstration."""
+"""CPU-hosted tomato detection with uploads and real-image examples."""
 from __future__ import annotations
 
 import hashlib
@@ -7,10 +7,18 @@ import io
 import os
 import zipfile
 from collections import Counter
+from pathlib import Path
 
 import streamlit as st
 
 from inference import CHINESE, Detector, annotate, decode_image, jpeg_preview, results_csv
+
+EXAMPLES = (
+    ("IMG20220323084648_aug3.jpg", "示例一"),
+    ("IMG20220324093257_aug5.jpg", "示例二"),
+    ("IMG20220325085806_aug1.jpg", "示例三"),
+)
+EXAMPLE_DIR = Path(__file__).resolve().parent / "examples"
 
 st.set_page_config(page_title="番茄病虫害检测", page_icon=":material/eco:", layout="wide")
 st.markdown("""<style>
@@ -27,7 +35,7 @@ h2 { font-size:1.3rem !important; }
 [data-testid="stSidebar"] { background:#eef3f1; }
 button { border-radius:6px !important; }
 h3 { font-size:1.1rem !important; overflow-wrap:anywhere; }
-button[kind="primaryFormSubmit"] { background:#dcefe6; color:#000; border-color:#18755f; }
+button[kind="primary"] { background:#dcefe6; color:#000; border-color:#18755f; }
 </style>""", unsafe_allow_html=True)
 
 
@@ -60,15 +68,14 @@ if os.getenv("ENABLE_P2D", "0") == "1":
 
 with st.sidebar:
     st.header("检测设置")
-    with st.form("detect"):
-        model_label = st.selectbox("检测模型", list(models))
-        confidence = st.slider("置信度阈值", 0.05, 0.95, 0.25, 0.05)
-        iou = st.slider("NMS 阈值", 0.1, 0.95, 0.7, 0.05)
-        files = st.file_uploader("待检测图像", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
-        submitted = st.form_submit_button("开始检测", type="primary", icon=":material/search:", use_container_width=True)
+    model_label = st.selectbox("检测模型", list(models))
+    confidence = st.slider("置信度阈值", 0.05, 0.95, 0.25, 0.05)
+    iou = st.slider("NMS 阈值", 0.1, 0.95, 0.7, 0.05)
+    files = st.file_uploader("待检测图像", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+    submitted = st.button("检测上传图片", type="primary", icon=":material/search:", width="stretch")
     st.caption("640 × 640 · ONNX Runtime · CPU")
     st.caption("最多 2 张，每张不超过 2 MiB、400 万像素。")
-    if st.button("清空结果", icon=":material/delete:", use_container_width=True):
+    if st.button("清空结果", icon=":material/delete:", width="stretch"):
         st.session_state.pop("artifacts", None)
         st.session_state.pop("errors", None)
     source = os.getenv("SOURCE_URL", "")
@@ -78,23 +85,38 @@ with st.sidebar:
 st.title("番茄病虫害检测")
 st.caption("六类叶片目标 · 图像检测与结果导出")
 
-if submitted:
+st.subheader("真实图像示例")
+example_input = None
+for index, (column, (filename, label)) in enumerate(zip(st.columns(3), EXAMPLES), 1):
+    with column:
+        image_path = EXAMPLE_DIR / filename
+        if image_path.is_file():
+            st.image(str(image_path), caption=label, width="stretch")
+            if st.button("检测此图", icon=":material/search:", key=f"example-{index}", width="stretch"):
+                example_input = [(filename, image_path.read_bytes())]
+        else:
+            st.warning("示例图片暂不可用。")
+st.caption("来源：[Tomato-Village](https://github.com/mamta-joshi-gehlot/Tomato-Village) 既有验证样例，仅用于功能演示，不属于独立外部测试。")
+st.divider()
+
+if submitted or example_input is not None:
     st.session_state["artifacts"] = []
     st.session_state["errors"] = []
-    if not files:
+    inputs = example_input if example_input is not None else [(f.name, f.getvalue()) for f in files]
+    if not inputs:
         st.warning("请先选择图片。")
-    elif len(files) > 2:
+    elif len(inputs) > 2:
         st.error("每批最多 2 张图片。")
     else:
         with st.spinner("检测中"):
-            for index, uploaded in enumerate(files):
+            for index, (filename, image_bytes) in enumerate(inputs):
                 try:
-                    rgb = decode_image(uploaded.getvalue())
+                    rgb = decode_image(image_bytes)
                     found, timing = detector().predict(rgb, models[model_label], confidence, iou)
                     preview = annotate(rgb, found)
                     st.session_state["artifacts"].append({
-                        "id": f"{index}-{hashlib.sha256(uploaded.getvalue()).hexdigest()[:10]}",
-                        "name": uploaded.name, "model": models[model_label], "label": model_label,
+                        "id": f"{index}-{hashlib.sha256(image_bytes).hexdigest()[:10]}",
+                        "name": filename, "model": models[model_label], "label": model_label,
                         "confidence": confidence, "iou": iou, "detections": found, "timing": timing,
                         "original": jpeg_preview(rgb), "preview": jpeg_preview(preview),
                     })
@@ -130,8 +152,8 @@ else:
             st.subheader(artifact["name"])
             st.caption(f'{artifact["label"]} · 置信度 {artifact["confidence"]:.2f} · NMS {artifact["iou"]:.2f}')
             left, right = st.columns(2)
-            left.image(artifact["original"], caption="原始图像", use_container_width=True)
-            right.image(artifact["preview"], caption=f'检测结果 · {len(artifact["detections"])} 个目标', use_container_width=True)
+            left.image(artifact["original"], caption="原始图像", width="stretch")
+            right.image(artifact["preview"], caption=f'检测结果 · {len(artifact["detections"])} 个目标', width="stretch")
             counts = Counter(d["class_cn"] for d in artifact["detections"])
             st.write("　".join(f"{name} {count}" for name, count in counts.items()) or "未检出高于当前置信度阈值的目标")
             timing = artifact["timing"]
@@ -145,7 +167,7 @@ else:
                 rows.append({"图像": artifact["name"], "目标": i, "类别": det["class_cn"],
                              "置信度": round(det["confidence"], 4),
                              **dict(zip(["左", "上", "右", "下"], [round(x, 1) for x in det["box"]]))})
-        st.dataframe(rows, hide_index=True, use_container_width=True)
+        st.dataframe(rows, hide_index=True, width="stretch")
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("detections.csv", results_csv(artifacts))
