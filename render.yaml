@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: tomato-detection-demo
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt && python verify_models.py
+    startCommand: streamlit run app.py --server.address 0.0.0.0 --server.port $PORT
+    healthCheckPath: /_stcore/health
+    autoDeployTrigger: off
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: ENABLE_P2D
+        value: "0"
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: OPENBLAS_NUM_THREADS
+        value: "1"
+      - key: DEMO_ACCESS_CODE
+        sync: false
+      - key: SOURCE_URL
+        sync: false

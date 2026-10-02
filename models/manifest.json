@@ -1,0 +1,18 @@
+{
+  "gtrfskd": {
+    "sha256": "e603002768fe87fc74418a6c6e52cc2901bb96ebe7c121fdb6b7612f7bcb62ee",
+    "bytes": 10568678,
+    "input": [1, 3, 640, 640],
+    "output": [1, 10, 8400],
+    "parameters": 2591010,
+    "validation_map50_95_seed0": 0.53773
+  },
+  "p2d": {
+    "sha256": "2c150a91602ecb4fcd1b4ee58550aeadfca32c2f7554059c952757554e1c7784",
+    "bytes": 39137603,
+    "input": [1, 3, 640, 640],
+    "output": [1, 10, 34000],
+    "parameters": 9604840,
+    "validation_map50_95_seed0": 0.66822
+  }
+}
