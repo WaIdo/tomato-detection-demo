@@ -16,9 +16,9 @@ st.set_page_config(page_title="番茄病虫害检测", page_icon=":material/eco:
 st.markdown("""<style>
 .stApp { background:#f8faf9; color:#000; }
 html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
-  font-family: "SimSun", "Songti SC", "Noto Serif CJK SC", serif; color:#000; }
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; color:#000; }
 h1,h2,h3,p,label,[data-testid="stMarkdownContainer"],button {
-  font-family: "SimSun", "Songti SC", "Noto Serif CJK SC", serif !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif !important;
   color:#000; letter-spacing:0; }
 .block-container { max-width:1440px; padding-top:2rem; }
 h1 { font-size:2rem !important; }
